@@ -1,0 +1,52 @@
+name: gem build
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  build_gem:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ['2.7']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+    - name: build gem
+      run: |
+        git clone https://github.com/infraoptics/app_perf_agent.git
+        gem build app_perf_agent/app_perf_agent.gemspec
+    - name: Set gem version
+      run: echo "APP_PERF_GEM_VERSION=$(ls -t app_perf_agent*.gem | sed 's/.*-\([0-9\.][0-9\.]*\)\..*/\1/')" >> $GITHUB_ENV
+    - uses: actions/upload-artifact@v2
+      with:
+        name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
+        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
+  build_rpm:
+    needs: build_gem
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '2.7'
+        bundler-cache: true
+    - uses: actions/download-artifact@v2
+      with:
+        name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
+        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
+    - name: build rpm spec
+      run: |
+        gem install gem2rpm
+        ls -t app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem | head -1 | xargs gem2rpm > app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
+    - uses: actions/upload-artifact@v2
+      with:
+        name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
+        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
