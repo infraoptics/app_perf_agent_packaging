@@ -13,9 +13,7 @@ jobs:
       matrix:
         ruby-version: ['2.7']
     outputs:
-      app_perf_agent_gem_version:
-        description: Version of app perf agent gem
-        value: ${{ env.APP_PERF_GEM_VERSION }}
+      app-perf-agent-gem-version: ${{ env.APP_PERF_GEM_VERSION }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Ruby
@@ -32,11 +30,12 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
-        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
+        path: ${{ github.workspace }}/app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
   build_rpm:
     needs: build_gem
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
@@ -44,13 +43,21 @@ jobs:
         bundler-cache: true
     - uses: actions/download-artifact@v2
       with:
-        name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
-        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem
-    - name: build rpm spec
-      run: |
-        gem install gem2rpm
-        ls -t app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.gem | head -1 | xargs gem2rpm > app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
+        name: app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.gem
+    - name: install gem2rpm
+      run: gem install gem2rpm
+    - name: build rpm spec file
+      run: gem2rpm -t scl.spec app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.gem > app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.spec
     - uses: actions/upload-artifact@v2
       with:
-        name: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
-        path: app_perf_agent-${{ env.APP_PERF_GEM_VERSION }}.spec
+        name: app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.spec
+        path: ${{ github.workspace }}
+    - uses: mosteo-actions/docker-run@v1
+      with:
+        image: infraoptics/rpmbuild:centos7
+        command: |
+          bash -c "source scl_source enable rh-ruby27 && mkdir -p /root/rpmbuild/SOURCES/ && cp app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.gem /root/rpmbuild/SOURCES/ && rpmbuild -bb app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}.spec --define 'scl_prefix_ruby rh-ruby27-' --define 'scl rh-ruby27' && cp /root/rpmbuild/RPMS/noarch/* ${{ github.workspace }}/"
+    - uses: actions/upload-artifact@v2
+      with:
+        name: app_perf_agent-${{ needs.build_gem.outputs.app-perf-agent-gem-version }}-rpm
+        path: ${{ github.workspace }}/*.rpm

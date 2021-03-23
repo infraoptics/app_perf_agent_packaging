@@ -1,0 +1,8 @@
+{
+	"bundler": "_ruby",
+	"json": "_ruby",
+	"minitest": "_ruby",
+	"rake": "_ruby",
+	"rdoc": "_ruby",
+	"test-unit": "_ruby"
+}
