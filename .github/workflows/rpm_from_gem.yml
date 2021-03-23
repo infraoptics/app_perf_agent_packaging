@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         ruby-version: ['2.7']
-    ouputs:
+    outputs:
       app_perf_agent_gem_version:
         description: Version of app perf agent gem
         value: ${{ env.APP_PERF_GEM_VERSION }}
