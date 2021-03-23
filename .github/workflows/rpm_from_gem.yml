@@ -12,6 +12,10 @@ jobs:
     strategy:
       matrix:
         ruby-version: ['2.7']
+    ouputs:
+      app_perf_agent_gem_version:
+        description: Version of app perf agent gem
+        value: ${{ env.APP_PERF_GEM_VERSION }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Ruby
